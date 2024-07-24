@@ -154,6 +154,7 @@ type Config struct {
 	ClientCA           string        `config:"client_ca"`            // Client certificate authority to verify clients with
 	MinTLSVersion      string        `config:"min_tls_version"`      // MinTLSVersion contains the minimum TLS version that is acceptable.
 	AllowOrigin        string        `config:"allow_origin"`         // AllowOrigin sets the Access-Control-Allow-Origin header
+	AllowHeaders       string        `config:"allow_headers"`        // AllowHeaders sets the Access-Control-Allow-Headers header
 }
 
 // AddFlagsPrefix adds flags for the httplib
@@ -168,6 +169,7 @@ func (cfg *Config) AddFlagsPrefix(flagSet *pflag.FlagSet, prefix string) {
 	flags.StringVarP(flagSet, &cfg.BaseURL, prefix+"baseurl", "", cfg.BaseURL, "Prefix for URLs - leave blank for root", prefix)
 	flags.StringVarP(flagSet, &cfg.MinTLSVersion, prefix+"min-tls-version", "", cfg.MinTLSVersion, "Minimum TLS version that is acceptable", prefix)
 	flags.StringVarP(flagSet, &cfg.AllowOrigin, prefix+"allow-origin", "", cfg.AllowOrigin, "Origin which cross-domain request (CORS) can be executed from", prefix)
+	flags.StringVarP(flagSet, &cfg.AllowHeaders, prefix+"allow-headers", "", cfg.AllowHeaders, "Headers which are allowed in cross-domain requests", prefix)
 }
 
 // AddHTTPFlagsPrefix adds flags for the httplib
@@ -285,7 +287,7 @@ func NewServer(ctx context.Context, options ...Option) (*Server, error) {
 		return nil, err
 	}
 
-	s.mux.Use(MiddlewareCORS(s.cfg.AllowOrigin))
+	s.mux.Use(MiddlewareCORS(s.cfg.AllowOrigin, s.cfg.AllowHeaders))
 
 	s.initAuth()
 
