@@ -174,6 +174,11 @@ func MiddlewareCORS(allowOrigin, allowHeaders string) Middleware {
 	})
 
 	return func(next http.Handler) http.Handler {
+		allowOrigins := strings.Split(allowOrigin, ",")
+		allowOriginMap := make(map[string]struct{}, len(allowOrigins))
+		for _, origin := range allowOrigins {
+			allowOriginMap[strings.TrimSpace(origin)] = struct{}{}
+		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// skip cors for unix sockets
 			if IsUnixSocket(r) {
@@ -182,7 +187,23 @@ func MiddlewareCORS(allowOrigin, allowHeaders string) Middleware {
 			}
 
 			if allowOrigin != "" {
-				w.Header().Add("Access-Control-Allow-Origin", allowOrigin)
+				if allowOrigin == "*" {
+					w.Header().Add("Access-Control-Allow-Origin", allowOrigin)
+				} else {
+					origin := r.Header.Get("Origin")
+					if origin != "" {
+						w.Header().Add("Vary", "Origin")
+						if _, ok := allowOriginMap[origin]; ok {
+							w.Header().Add("Access-Control-Allow-Origin", origin)
+						} else {
+							fs.Infof(r.URL.Path, "CORS: request from %q has been blocked", origin)
+							w.Header().Add("Access-Control-Allow-Origin", "null")
+							w.WriteHeader(http.StatusForbidden)
+							return
+						}
+					}
+				}
+
 				if allowHeaders != "" {
 					w.Header().Add("Access-Control-Allow-Headers", allowHeaders)
 				} else {
